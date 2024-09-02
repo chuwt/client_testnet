@@ -30,6 +30,7 @@ import { program } from 'commander';
 import { JOBS_ENDORSE, JOBS_ENDORSE_CHECK, RETRY_INTERVAL_MS } from './utils/constants';
 import {Version} from "./utils/version";
 import {Font} from "./utils/font";
+import express, { Request, Response } from 'express';
 
 const commandOptions = program
   .option('--pwd <password>', 'Set password for keystore')
@@ -38,11 +39,15 @@ const commandOptions = program
   .parse(process.argv)
   .opts();
 
+const app = express();
+const PORT: number = 8081;  
+
 let exsat: Exsat;
 let accountInfo: any;
 let encFile;
 let [endorseRunning, endorseCheckRunning] = [false, false];
 let startupStatus = false;
+let lastSubmittedHeight = 0;
 
 
 async function checkKeystoreAndParse() {
@@ -222,6 +227,7 @@ async function validatorWork() {
       const blockcountInfo = await getblockcount();
       const blockhashInfo = await getblockhash(blockcountInfo.result);
       await checkAndSubmitEndorsement(accountName, blockcountInfo.result, blockhashInfo.result);
+      lastSubmittedHeight = blockcountInfo.result;
     } catch (e) {
       console.error('Endorse task error', e);
       await sleep(RETRY_INTERVAL_MS);
@@ -699,7 +705,23 @@ async function checkClientMenu() {
   } while (action !== '99');
 }
 
-main().then(() => {
+app.get('/ping', (req: Request, res: Response) => {
+  res.send('pong');
+});
+
+const startServer = async (): Promise<void> => {
+  return new Promise<void>((resolve) => {
+    app.listen(PORT, () => {
+      logger.info(`server running on http://localhost:${PORT}`);
+    });
+  });
+};
+
+const Main = async () => {
+  await Promise.all([startServer(), main()]);
+};
+
+Main().then(() => {
 }).catch((e) => {
   logger.error(e);
 });

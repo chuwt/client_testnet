@@ -706,7 +706,7 @@ async function checkClientMenu() {
 }
 
 app.get('/ping', (req: Request, res: Response) => {
-  res.send(lastSubmittedHeight);
+  res.send(lastSubmittedHeight.toString());
 });
 
 const startServer = async (): Promise<void> => {
